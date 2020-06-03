@@ -1,0 +1,111 @@
+---
+title: "Homework 1"
+output:
+  pdf_document: default
+---
+
+# Problem 1
+```{r}
+
+set.seed(42)
+
+roll_dice <- function(n){
+    x <- runif(n)
+    x[x >= 5/6          ] = 6
+    x[x >= 4/6 & x < 5/6] = 5
+    x[x >= 3/6 & x < 4/6] = 4
+    x[x >= 2/6 & x < 3/6] = 3
+    x[x >= 1/6 & x < 2/6] = 2
+    x[           x < 1/6] = 1
+    x
+}
+```
+
+
+```{r}
+R <- 100000
+
+rolls <- roll_dice(R)
+roll_freq <- table(rolls) / R
+barplot(roll_freq, main="Dice rolls. Observed relative frequencies")
+```
+
+
+# Problem 2
+As shown in lecture in Section 1.3 and specifically in Ex1.1, exponential distribution can be realized as $-\frac{log(u)}{\lambda}$, where $u$ comes from $U[0,1]$.
+
+```{r}
+exponential <- function (n, rate=1) {
+    u <- runif(n)
+    x <- -log(u) / rate
+    x
+}
+```
+```{r}
+gen_exp <- exponential(R, rate=1)
+exp_seq <- seq(0, 10, 0.01)
+plot(density(gen_exp),
+     xlim=c(0,10), ylim=c(0,1),
+     col="blue", xlab="x", ylab="density", cex.main=1,
+     main="Exp(1) distribution
+           Blue: Emperical (kernel) density function.
+           Red: True density function (dexp).")
+par(new=TRUE)
+plot(exp_seq, dexp(exp_seq), type="l",
+     xlim=c(0,10), ylim=c(0,1),
+     col="red", xlab="", ylab="", main="")
+```
+
+# Problem 3
+1) According to property ii), $N(t+s) - N(t)$ is independent of $N(t)$.
+2) From property iii) we know, that $N(t) \sim Poi(\lambda t)$, which means, that $N(t)$ depends on $t$.
+3) Let's assume, that $N(t+s) - N(t)$ depends on $t$. Then both $N(t+s) - N(t)$ and $N(t)$ depend on $t$, which makes them correlated. In this case, assumption of independence is violated. Therefore, $N(t+s) - N(t)$ is independent of $t$.
+4) If $N(t+s) - N(t)$ is independent of starting point $t$, it can only depend on the interval length $s$.
+    Therefore, $N(t+s) - N(t) = N(s)$.
+5) Property iii) states, that $N(t) \sim Poi(\lambda t)$, therefore $N(t+s) - N(t) = N(s) \sim Poi(\lambda s)$.
+
+
+```{r}
+poisson_single <- function(rate=1){
+    counter <- 0
+    sum <- 0
+    repeat{
+        sum <- sum + exponential(1, rate)
+        if(sum > 1){
+            break
+        }
+        counter <- counter + 1
+    }
+    counter
+}
+
+poisson <- function(n, rate=1){
+    vec <- numeric(n)
+    for (i in 1:n){
+        vec[i] <- poisson_single(rate)
+    }
+    vec
+}
+```
+```{r}
+R <- 100000
+rate <- 10
+
+blue <- rgb(0, 0, 1, alpha=0.5)
+red  <- rgb(1, 0, 0, alpha=0.5)
+```
+```{r}
+gen_poi <- poisson(R, rate)
+plot_seq <- seq(1, 25)
+hist(gen_poi, freq=FALSE, breaks=25,
+    xlim=c(0,25),
+    col=red, xlab='x', cex.main=1,
+    main="Poi(10) distribution
+          Blue: observed relative frequencies.
+          Red: True density function (dpois).
+          Overlap is purple")
+barplot(dpois(plot_seq, rate), space=0, add=TRUE,
+    xlim=c(0,25),
+    col=blue)
+```
+
