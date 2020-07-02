@@ -1,0 +1,224 @@
+---
+title: "Sampling in R"
+author: "Claudia Czado"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+output: 
+  html_document: 
+    theme: paper
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(continue = TRUE, warning = FALSE, message = FALSE,fig.width = 6, out.width = "70%",
+                      fig.asp = 0.618, fig.retina = 3, fig.align = 'center')
+knitr::opts_knit$set(global.par = TRUE)
+
+```
+
+
+
+
+## Required R packages
+
+- rafalib
+- mosaic
+- dplyr
+- ggplot2
+
+```{r load, include=FALSE}
+require(rafalib)
+require(mosaic)
+require(dplyr)
+require(ggplot2)
+```
+
+
+
+## Flipping coins 
+
+using the R packages
+
+- mosaic, 
+- dplyr and
+- ggplot2
+
+### Flipping a single fair coin
+```{r}
+set.seed(2017)
+do(1) * rflip(1)
+```
+
+### Flipping 6 times 10 fair coins independently
+```{r}
+do(6) * rflip(10)
+```
+
+### Flipping 5000 times 5 fair coins independently
+```{r}
+simGuesses <- do(5000) * rflip(5)
+```
+
+Sorting the 5000 5 coin flips by the number of heads
+```{r}
+simGuesses %>% 
+  group_by(heads) %>%
+  summarize(count = n())
+```
+
+
+### Creating a histogram of the number of heads resulting from the 5000 flips
+
+```{r, fig.width=4, out.width="50%"}
+ggplot(data = simGuesses, mapping = aes(x = heads)) +
+  geom_histogram(binwidth = 1, color = "white")
+
+```
+
+This histogram does not reflect the disceteness of the number of heads
+
+### Histogram accounting for disceteness of the number of heads
+
+
+```{r,fig.height=4, out.width="50%"}
+ggplot(data = simGuesses, mapping = aes(x = factor(heads))) +
+  geom_bar()
+```
+
+This histogram has the shape of a standard normal density, which is justified by the central limit theorem.
+Adapted from Section 8.4 of [moderndiver](https://ismayc.github.io/moderndiver-book/8-sampling.html)
+
+
+## Sampling from standard univariate distributions 
+
+The function
+
+- *runif()* samples from a uniform distribution
+
+- *rbinom()* samples from a binomial distribution
+
+- *rpois()* samples from a Poisson distribution
+
+- *rgamma()* samples from a Gamma distribution
+
+- *rexp()* samples from an exponential distribution
+
+- *rnorm()* samples from a Normal distribution
+
+### Sampling from the uniform and the normal distribution
+
+We now sample from some distributions for several sample sizes
+
+
+```{r}
+data.unif100<-runif(100,min=0,max=1)
+data.unif200<-runif(200,min=0,max=1)
+data.unif500<-runif(500,min=0,max=1)
+data.unif1000<-runif(1000,min=0,max=1)
+
+data.norm100<-rnorm(100,mean=0,sd=1)
+data.norm200<-rnorm(200,mean=0,sd=1)
+data.norm500<-rnorm(500,mean=0,sd=1)
+data.norm1000<-rnorm(1000,mean=0,sd=1)
+
+data.exp100<-rexp(100,rate=1)
+data.exp200<-rexp(200,rate=1)
+data.exp500<-rexp(500,rate=1)
+data.exp1000<-rexp(1000,rate=1)
+
+```
+
+### Histograms of the sampled uniformly distributed values
+
+```{r, fig.height=7,fig.width=6}
+bigpar(2,2)
+hist(data.unif100,xlab="x",main="n=100")
+hist(data.unif200,xlab="x",main="n=200")
+hist(data.unif500,xlab="x",main="n=500")
+hist(data.unif1000,xlab="x",main="n=1000")
+
+
+```
+
+### Histograms of the sampled exponentially distributed values
+
+```{r, fig.height=7,fig.width=7}
+bigpar(2,2)
+hist(data.exp100,xlab="x",main="n=100")
+hist(data.exp200,xlab="x",main="n=200")
+hist(data.exp500,xlab="x",main="n=500")
+hist(data.exp1000,xlab="x",main="n=1000")
+
+
+```
+
+### Histograms of the sampled normally distributed values
+
+```{r, fig.height=7,fig.width=7}
+bigpar(2,2)
+hist(data.norm100,xlab="x",main="n=100")
+hist(data.norm200,xlab="x",main="n=200")
+hist(data.norm500,xlab="x",main="n=500")
+hist(data.norm1000,xlab="x",main="n=1000")
+```
+
+### QQ plots of the normally distributed samples
+
+
+```{r, fig.width=14}
+bigpar(1,3)
+qqnorm(data.norm200,main="n=200")
+qqline(data.norm200,col=2)
+qqnorm(data.norm500,main="n=500")
+qqline(data.norm500,col=2)
+qqnorm(data.norm1000,main="n=1000")
+qqline(data.norm1000,col=2)
+
+```
+
+###  Further R functions for distributions
+
+Note that
+
+- \text{runif()} samples from the uniform distribution
+- \text{punif()} gives the distribution function of the uniform distribution
+- \text{dunif()} gives the density function of the uniform distribution
+- \text{qunif()} gives the quantile function of the uniform distribution
+
+Similarly for all the other distributions
+
+###  Probability integral transforms (PIT) of normal and exponential samples
+
+```{r}
+udata.exp100<-pexp(data.exp100)
+udata.exp200<-pexp(data.exp200)
+udata.exp500<-pexp(data.exp500)
+udata.exp1000<-pexp(data.exp1000)
+
+udata.norm100<-pnorm(data.norm100)
+udata.norm200<-pnorm(data.norm200)
+udata.norm500<-pnorm(data.norm500)
+udata.norm1000<-pnorm(data.norm1000)
+
+```
+
+### Histograms of PIT's of normally distributed samples
+
+```{r,fig.width=7}
+bigpar(2,2)
+hist(udata.norm100,xlab="x",main="PIT(n=100)")
+hist(udata.norm200,xlab="x",main="PIT(n=200)")
+hist(udata.norm500,xlab="x",main="PIT(n=500)")
+hist(udata.norm1000,xlab="x",main="PIT(n=1000)")
+```
+
+
+### Histograms of PIT's of exponentially distributed samples
+
+```{r, fig.height=7,fig.width=7}
+bigpar(2,2)
+hist(udata.exp100,xlab="x",main="n=100")
+hist(udata.exp200,xlab="x",main="n=200")
+hist(udata.exp500,xlab="x",main="n=500")
+hist(udata.exp1000,xlab="x",main="n=1000")
+```

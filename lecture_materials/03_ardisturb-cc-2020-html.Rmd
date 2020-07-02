@@ -1,0 +1,218 @@
+---
+title: "Gibbs sampling with R2jags for the simple linear regression model with AR(1) distributed errors"
+author: "Claudia Czado"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+output: 
+  html_document: 
+    theme: paper
+    toc: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = FALSE)
+```
+
+
+# Required libraries
+- R2jags: performs the Gibbs sampling
+- rafalib: produces nicer output for multiple plots
+- ggmcmc: tools for working with MCMC output
+- xtable: produces latex tables from R output
+
+
+
+```{r, include=FALSE}
+require(R2jags)   # performs the Gibbs sampling
+require(rafalib)  # produces nicer output for multiple plots
+require(ggmcmc)   # tools for working with MCMC output
+require(xtable)   # produces latex tables from R output
+```
+
+
+#  Generate data from a simple linear regression model with AR(1) disturbances 
+
+```{r}
+arlinsim<-function(n=200,b=c(1,.5),x=seq(-3,3,length=200),
+                   sd.u=.5,rho=.8)
+  {
+  eps=rep(0,n)
+  y=rep(0,n)
+  eps[1]<-rnorm(1,sd.u)
+  mu=rep(b[1],n)+(b[2]*x)
+  for (t in 2:n){
+       eps[t]=(rho*eps[t-1])+rnorm(1,mean=0,sd=sd.u)
+	}
+  y=mu+eps
+  
+  list(y=y,x=x,b.t=b,n=n,rho.t=rho,mu.t=mu,eps.t=eps,sd.u=sd.u)
+}
+set.seed(2020) # fix seed to get reproducibility
+out<-arlinsim()
+data_arlin=list(x=out$x,n=out$n,b0=c(0,0),
+B0=matrix(c(0.00001, 0, 0,0.00001),nrow=2,ncol=2),y=out$y)
+```
+
+
+## Plot simulated data
+
+```{r data_arsim,out.width="60%", fig.align = 'center'}
+bigpar(3,1)
+lab.tit<-paste("beta = (",out$b.t[1],",",out$b.t[2],")",", rho = ",out$rho.t,", sd.u = ",out$sd.u)
+plot(1:out$n,out$eps.t,xlab="T",ylab="AR error",type="l",main=lab.tit)
+plot(1:out$n,out$y,xlab="T",ylab="response",type="l")
+plot(1:out$n,out$mu.t,xlab="T",ylab="mean",type="l")
+```
+
+
+
+# Set up bugs code
+
+
+```{r}
+arlin_model <-function(){
+# initialization for t=1
+   mean.y[1] <- b[1] + b[2]*x[1]
+   y[1] ~ dnorm(mean.y[1], tau.u)
+# t>1
+   for(t in 2:n)
+   {
+      mean.y[t] <- b[1]*(1-rho) + b[2]*(x[t]-rho*x[t-1]) + rho*y[t-1]
+      y[t] ~ dnorm(mean.y[t], tau.u)
+   }
+
+#  tau.u is the precision parameter
+   sigma.u <- 1 / sqrt(tau.u)
+#
+# Prior specifications for
+# precision
+   tau.u ~ dgamma(0.05, 0.05)
+# auto correlation
+  rho ~ dunif(-1,1)
+# regression parameter
+  b[1:2] ~ dmnorm(b0[], B0[ , ])
+}
+```
+
+
+
+
+# Run R2jags with single chain for 500 iterations with burnin of 100 iterations
+
+```{r}
+arlin_mcmc <- jags(data = data_arlin, inits=list(list(b=c(5,5),rho=0.0,tau.u=.01)),
+             parameters.to.save = c("b","rho","sigma.u","tau.u"),
+             n.iter = 500, 
+             n.chains = 1,
+             n.thin = 1,
+             n.burnin = 0, # 100 iterations are run for adaption
+             model.file = arlin_model)
+```
+
+
+## First check of output
+
+
+
+```{r}
+structure(arlin_mcmc) 
+```
+
+# Examining the output
+
+## Trace plot in R2jags
+```{r,out.width="70%", fig.align='center'}
+bigpar(3,2)
+traceplot(arlin_mcmc,mfrow=c(3,2))
+```
+
+## Examine MCMC output using ggmcmc
+
+### Setup R2jags output to be used with ggmcmc
+```{r}
+# creates an mcmc object to be used in coda
+arlin.mcmc <- as.mcmc(arlin_mcmc)
+# imports MCMC samples to be used by ggs 
+# graphical functions
+arlin.ggs <- ggs(arlin.mcmc)
+```
+
+### Histograms of sampled values after burnin
+
+```{r, out.width="70%", fig.align='center'}
+ggs_histogram(arlin.ggs)
+```
+
+### Kernel density estimates of sampled values after burnin
+
+```{r, out.width="70%", fig.align='center'}
+ggs_density(arlin.ggs)
+```
+
+### Estimated autocorrelations among the chain
+
+```{r acf_arsim, out.width="70%", fig.align='center'}
+ggs_autocorrelation(arlin.ggs)
+```
+
+### Cross dependence between the sampled MCMC values
+
+```{r pairs_arsim, out.width="70%", fig.align='center'}
+ggs_pairs(arlin.ggs)
+```
+
+## Nicer layout
+
+### Plot posterior density estimates and traces on a nicer layout
+```{r, out.width="70%", fig.align='center'}
+# traces and densities
+mypar(3,4)
+plot(arlin.mcmc,auto.layout=FALSE)
+```
+
+### Plot posterior traces on a nicer layout
+```{r trace_arsim, out.width="70%", fig.align='center'}
+# traces only
+mypar(3,2)
+plot(arlin.mcmc,density=FALSE,auto.layout = FALSE)
+```
+
+### Plot posterior density estimates on a nicer layout
+
+```{r mar_den_arsim, out.width="70%", fig.align='center'}
+# posterior density estimates only
+mypar(3,2)
+plot(arlin.mcmc,trace=FALSE,auto.layout = FALSE)
+```
+
+##  Examine DIC and other components
+
+```{r}
+names(arlin_mcmc$BUGSoutput) # see which output is available
+arlin_mcmc$BUGSoutput$DIC
+```
+
+
+## MCMC summary statistics
+
+
+```{r summary_arsim}
+out<-summary(arlin.mcmc)
+out
+```
+
+
+### Converting summary statistics to latex table
+
+```{r summary_arsim_latex}
+xtable(round(out$statistics,digits=3))
+```
+
+
+### Converting quantile results to latex table
+
+```{r quantile_arsim_latex}
+xtable(round(out$quantiles,digits=3))
+```
+
+C. Czado April 2020

@@ -1,0 +1,206 @@
+---
+title: "HMC analysis of a linear regression with autoregressive error using rtan applied to the approval rates of President Reagan"
+author: "Claudia Czado"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+output: 
+  html_document: 
+    theme: paper
+    toc: yes
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+
+# Preliminaries
+
+
+## Installing *Rtools*
+- First one needs to install *Rtools*. Installation is described under 
+*http://jtleek.com/modules/01_DataScientistToolbox/02_10_rtools/#1 *
+- Downloads of *Rtools* you can find under *https://cran.r-project.org/bin/windows/Rtools/ *
+
+- After *Rtools* is installed install in Rstudio the package *devtools*
+
+## Installing R package *bayesjackman*
+
+- In *Rstudio* type into the console window
+
+*devtools::install_github("jrnold/jackman-bayes", subdir = "bayesjackman")*
+  
+## Required R packages
+
+- bayesjackman (contains rstan codes for the examples of Simon Jackman)
+- rafalib 
+- rstan
+- tidyverse
+
+
+```{r load, include=FALSE}
+require(rafalib)
+require(bayesjackman)
+require(rstan)
+require(tidyverse)
+```
+
+# Package *bayesjackman*
+
+- Under *https://jrnold.github.io/bugs-examples-in-stan/ * you can find 
+a description of **Simon Jackman's Bayesian Model Examples in Stan**
+by Jeffrey B. Arnold. 
+- His work is licensed under the Creative Commons Attribution 4.0 International License
+*https://creativecommons.org/licenses/by /4.0/ *
+- The following analysis is based on his code.
+
+# Approval rates of President Reagan
+
+The data set *ReaganApproval* is contained in the R package *bayesjackman* and gives the *approval rating* of President Reagan over 96 months together with the corresponding *unemployment* and *inflation rates*.
+
+```{r}
+data("ReaganApproval", package = "bayesjackman")
+head(ReaganApproval)
+```
+
+# Exploring the data
+
+```{r}
+summary(ReaganApproval)
+```
+
+```{r reagan_data,fig.height=8, fig.width=6}
+bigpar(3,1)
+plot(1:96,ReaganApproval$app,type="l",ylab="app",xlab="month")
+plot(1:96,ReaganApproval$infl,type="l",ylab="infl",xlab="month")
+plot(1:96,ReaganApproval$unemp,type="l",ylab="unemp",xlab="month")
+```
+
+## Fitting a linear model
+
+```{r}
+r<-lm(app~infl+unemp, data=ReaganApproval)
+summary(r)
+```
+
+
+## Checking residuals over time
+
+The residuals are correlated over time
+```{r}
+round(cor(resid(r)[1:95],resid(r)[2:96]),digits=2)
+```
+
+
+
+```{r resid_ar, fig.height=5,fig.width=6}
+plot(resid(r)[1:95],resid(r)[2:96])
+abline(0,1,lty=2)
+```
+
+# Model formulation for the linear model with autoregressive disturbances
+
+Note the marginal model for the first observation, and the conditioning on the lagged observation for months 2 through 96. A uniform prior over the stationary (-1,1) interval is employed for the residual AR(1) parameter.
+
+- $y_i=\mu_i+\epsilon_i+\theta \epsilon_{i-1}$
+
+- $\mu_i=\alpha+x^\top\beta$ and $\epsilon_{i} \sim Normal(0,\sigma^2)$, i.i.d.
+for $i \in 1,.,N$. 
+
+Weakly informative priors for each parameter are used,
+
+
+- $\alpha \sim Normal(0,10),\beta_k \sim Normal(0,2.5),k \in 1,.,K$
+
+- $\sigma \sim HalfCauchy(0,5),\theta=2\theta^* - 1, \theta^* \sim Beta(1,1)$.
+
+
+# Setup the data for running *rstan*
+
+```{r}
+reagan_data <- within(list(), {
+  y <- ReaganApproval$app
+  N <- length(y)
+  X <- model.matrix(~ 0 + infl + unemp, data = ReaganApproval) %>% scale()
+  K <- ncol(X)
+  alpha_loc <- 0
+  alpha_scale <- 10
+  beta_loc <- rep(0, K)
+  beta_scale <- rep(2.5 * sd(y), K)
+  sigma_scale <- 5 * sd(y)
+  theta_a <- 1
+  theta_b <- 1
+})
+```
+
+# Setup for a linear regression model with autoregressive errors to be used in *rstan*
+
+In the file *regar1.stan* the stan model formulation for a linear regression model with autoregressive error is given. This takes some time when you run it the first time.
+
+```{r, cache=TRUE}
+mod_regar1 <- stan_model("regar1.stan")
+```
+
+To see the stan code type:
+```{r}
+mod_regar1
+```
+
+# Run a MCMC using Hamiltonian Monte Carlo using *rstan*
+
+The function *sampling* performs the sampling. Some of its defaults
+are
+
+- chains=4
+
+- iter=2000
+
+- warmup=floor(iter/2)
+
+- thin=1
+
+- init='random'
+
+- show_messages=TRUE
+
+For details you can find with the help function.
+
+```{r,eval=FALSE}
+help("sampling,stanmodel-method")
+```
+
+
+```{r}
+reagan_fit <- sampling(mod_regar1, data = reagan_data)
+```
+
+# Summary output of the HMC samples
+
+```{r}
+out_reagan<-round(summary(reagan_fit, par = c("alpha", "beta", "theta", "sigma"))$summary,digits=3)
+out_reagan
+```
+
+# Trace plots of the HMC sample
+
+```{r trace_reagan,fig.width=8,fig.height=6}
+traceplot(reagan_fit,par = c("alpha", "beta", "theta", "sigma"),inc_warmup=TRUE)
+
+
+```
+
+# Marginal posterior density estimates 
+
+```{r mar_den_reagan,fig_width=8,fig_height=6}
+stan_dens(reagan_fit,par = c("alpha", "beta", "theta", "sigma"),separate_chains=TRUE)
+
+```
+
+
+# Estimated posterior autocorrelations
+
+```{r acf_reagan,fig_width=8,fig_height=6}
+stan_ac(reagan_fit,par = c("alpha", "beta", "theta", "sigma"),separate_chains=TRUE)
+```
+
+
+

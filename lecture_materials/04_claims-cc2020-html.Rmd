@@ -1,0 +1,236 @@
+---
+title: "A Poisson Model for Claim Frequency Data"
+author: "Claudia Czado"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+output: 
+  html_document: 
+    theme: paper
+    toc: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = FALSE)
+```
+
+
+
+# Required libraries
+
+- R2jags: performs the Gibbs sampling
+- rafalib: produces nicer output for multiple plots
+- ggmcmc: tools for working with MCMC output
+
+
+
+```{r, include=FALSE}
+require(R2jags)
+library(rafalib)
+require(ggmcmc)
+```
+# Data 
+
+## Data notation
+
+- x[i,j] is the number of claims for the ith group policy holder in jth policy year i=1..3 and j=1...5
+
+- p[i,j] is the number on payroll for the ith group policy holder in jth policy year i=1..3 and j=1...5
+
+## Input the data 
+
+```{r}
+data_claims=list( x = structure( 
+              .Data = c( 9, 7, 6, 13,10, 
+                                6, 4, 2, 8,  5, 
+                             6, 8, 3, 4,  7 ), 
+              .Dim = c( 3, 5 ) ), 
+
+       p =  structure( 
+              .Data = c( 280, 320, 265, 340,325, 
+                                260, 275, 240, 265, 285, 
+                                 267, 145, 120, 105, 115 ),  
+              .Dim = c( 3, 5 ) ) ) 
+
+data_claims
+```
+
+
+# Set up Bugs model to be used with \texttt{R2jags}
+
+```{r}
+claims_model <-function(){
+for( j in 1 : 5 ) {
+      for( i in 1 : 3 ) {
+         x[i , j] ~ dpois(lambda[i , j])
+      }
+   }
+for( j in 1 : 5 ) {
+      for( i in 1 : 3 ) {
+         lambda[i , j] <- p[i , j] * theta[i]
+      }
+   }
+for( i in 1 : 3 ) {
+      theta[i] ~ dgamma(alpha,beta)
+   }
+   alpha ~ dgamma(5,5)
+   beta ~ dgamma(25,1)
+}
+```
+
+
+
+# Run R2jags with single chain
+
+
+```{r}
+set.seed(2020)
+claims_mcmc <- jags(data = data_claims, inits=list(list(alpha = 1,theta = c( 2, 2, 2 ), beta=1)),
+             parameters.to.save =c("beta","alpha","theta","lambda"),
+             n.iter = 1000, 
+             n.chains = 1,
+             n.thin = 1,
+             n.burnin = 500, # 100 iterations are run for adaption
+             model.file = claims_model)
+```
+
+## Examine R2jags output
+
+```{r}
+structure(claims_mcmc)
+```
+
+
+# Get MCMC output from R2jags to the right format
+
+
+```{r}
+claims.mcmc <- as.mcmc(claims_mcmc)
+claims.ggs <- ggs(claims.mcmc)
+# sampled values of first MCMC iteration
+claims.mcmc[1,]
+```
+
+# Examine histograms of the sampled values
+
+## Examine histograms of the sampled alpha values
+
+```{r hist_alpha_claims, out.width="70%",fig.align='center'}
+ggs_histogram(claims.ggs,family="alpha")
+
+```
+
+## Examine histograms of the sampled beta values
+
+```{r hist_beta_claims, out.width="70%",fig.align='center'}
+ggs_histogram(claims.ggs,family="beta")
+```
+
+## Examine histograms of the sampled theta values
+
+```{r hist_theta_claims, out.width="70%",fig.align='center'}
+ggs_histogram(claims.ggs,family="theta")
+```
+
+
+# Examine autocorrelations
+
+## Examine autocorrolations of the sampled alpha values
+
+```{r acf_alpha_claims, out.width="70%",fig.align='center'}
+ggs_autocorrelation(claims.ggs,family="alpha")
+```
+
+## Examine autocorrolations of the sampled beta values
+
+```{r acf_beta_claims, out.width="70%",fig.align='center'}
+ggs_autocorrelation(claims.ggs,family="beta")
+```
+
+##  Examine autocorrolations of the sampled theta values
+
+```{r acf_theta_claims, out.width="70%",fig.align='center'}
+ggs_autocorrelation(claims.ggs,family="theta")
+```
+
+# Examine marginal posterior density estimates
+
+## Examine marginal posterior density estimates for alpha
+
+
+```{r mar_den_alpha_claims, out.width="70%",fig.align='center'}
+ggs_density(claims.ggs,family="alpha")
+
+```
+
+##  Examine marginal posterior density estimates for beta
+
+```{r mar_den_beta_claims, out.width="70%",fig.align='center'}
+ggs_density(claims.ggs,family="beta")
+```
+
+## Examine marginal posterior density estimates for theta
+
+```{r mar_den_theta_claims, out.width="70%",fig.align='center'}
+ggs_density(claims.ggs,family="theta")
+```
+
+
+
+
+# Cross correlations for theta
+
+
+```{r,out.width='60%', fig.align='center'}
+ggs_pairs(claims.ggs,family="theta")
+```
+
+# Traces and density plots 
+## Plot traces and posterior density  for alpha,beta and deviance
+```{r,out.width="70%", fig.align='center'}
+mypar(3,2)
+plot(claims.mcmc[,1:3],auto.layout=FALSE)
+```
+
+
+## Plot traces and posterior density for theta
+```{r,out.width="70%", fig.align='center'}
+mypar(3,2)
+plot(claims.mcmc[,19:21],auto.layout=FALSE)
+```
+
+
+## Plot posterior density estimates and traces for alpha, beta and theta
+```{r trace_den_claims,fig.width=4, out.width="30%",fig.align='center'}
+mypar(5,2)
+plot(claims.mcmc[,c(1:2,19:21)],auto.layout=FALSE)
+```
+
+
+## Plot posterior density estimates and traces for DIC
+```{r DIC_claims, out.width="60%",fig.align='center'}
+# traces and densities
+mypar(1,2)
+plot(claims.mcmc[,3],auto.layout=FALSE)
+```
+##  Plot posterior density estimates for lambda
+```{r den_lambda_claims, out.width="70%",fig.align='center'}
+mypar(3,5)
+plot(claims.mcmc[,4:18],trace=FALSE,auto.layout=FALSE,cex.main=1)
+```
+
+
+## Trace plots of sampled lambda
+
+
+```{r trace_lambda_claims, out.width="70%",fig.align='center'}
+mypar(3,5)
+plot(claims.mcmc[,4:18],density=FALSE,auto.layout=FALSE,cex.main=1)
+```
+
+
+# MCMC summary statistics
+
+```{r summary_arsim, out.width="70%",fig.align='center'}
+out<-summary(claims.mcmc)
+out
+```

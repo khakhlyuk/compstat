@@ -1,0 +1,190 @@
+---
+title: "Gibbs sampling for the Poisson change point problem"
+author: "Claudia Czado"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+header-includes:
+   - \usepackage{framed}
+output: 
+  html_document: 
+    theme: paper
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(continue = TRUE, warning = FALSE, message = FALSE,fig.width = 6, out.width = "70%",
+                      fig.asp = 0.618, fig.retina = 3, fig.align = 'center')
+knitr::opts_knit$set(global.par = TRUE)
+knitr::opts_chunk$set(cache = FALSE)
+```
+
+
+
+# Required R packages
+
+- rafalib
+
+
+```{r load, include=FALSE}
+require(rafalib)
+```
+
+
+
+
+# Poisson change point problem
+
+We assume we have 
+
+- $Y_i \sim Pois(\lambda), i=1,\ldots,m$ and 
+- $Y_i \sim Pois(\phi), i=m,\ldots,n$
+where the change point $m$ is unknown. So we want to estimate
+$\lambda, \phi$ and $m$.
+- As prior distribution we assume $\lambda \sim Gamma(a,b)$ and $\phi \sim Gamma(\gamma,\delta)$
+
+# Simulating data from the Poisson change point model
+
+```{r}
+sim.data.pois<-function(n = 50, a = 5, b = 1, ga = 1, de = 1)
+{
+	# generate data and plot it
+	la <- rgamma(1, a, b)
+	phi <- rgamma(1, ga, de)
+	m <- sample(1:n, size = 1)
+	y.m <- rpois(m, la)
+	y.nm <- rpois(n - m, phi)
+	y <- c(y.m, y.nm)
+	par(mfrow = c(1, 1))
+	plot(y)
+	title(paste("lambda=", round(la, digits = 2), ", phi=", round(phi,
+		digits = 2), ", m=", m))
+	data <- list(n = n, y = c(y.m, y.nm), la.true = la, phi.true = phi,
+		m.true = m, a = a, b = b, ga = ga, de = de)
+	data
+	}	
+```
+
+
+```{r,arsimdata}
+data<-sim.data.pois(n = 50, a = 5, b = 1, ga = 1, de = 1)
+```
+
+
+
+
+# Gibbs sampling function
+
+```{r}
+gibbs.pois<-function(R = 100, data=data, m.start=25,
+phi.start=1, la.start=1)
+{
+	la <- data$la.true
+	phi <- data$phi
+	m <- data$m
+	n<-data$n
+	a<-data$a
+	b<-data$b
+	ga<-data$ga
+	de<-data$de
+	y.m <- rpois(m, la)
+	y.nm <- rpois(n - m, phi)
+	y <- c(y.m, y.nm)
+	# Gibbs Sampling
+	la.vec <- rep(0, R)
+	phi.vec <- rep(0, R)
+	m.vec <- rep(0, R)
+	prob <- rep(0, n)
+	# starting  values
+	m.old <- m.start
+	la.old <- la.start
+	phi.old <- phi.start
+	for(i in 1:R) {
+		la.new <- rgamma(1, a + sum(y[1:m.old]), b + m.old)
+		if(m.old != n) {
+			phi.new <- rgamma(1, ga + sum(y[(m.old + 1):n]), de +
+				n - m.old)
+		}
+		else {
+			phi.new <- rgamma(1, ga, de)
+		}
+		for(j in 1:(n - 1)) {
+			temp <- (j * (phi.new - la.new)) + (log(la.new) * sum(
+				y[1:j])) + (log(phi.new) * sum(y[(j + 1):n]))
+			prob[j] <- temp
+		}
+		prob[n] <- (n * (phi.new - la.new)) + (log(la.new) * sum(y[
+			1:n]))
+		pmax <- max(prob)
+		prob1 <- exp(prob - pmax)/sum(exp(prob - pmax))
+		m.new <- sample(x = n, size = 1, replace = T, prob = prob1)
+		#print(c(i, la.new, phi.new, m.new))
+		la.vec[i] <- la.new
+		phi.vec[i] <- phi.new
+		m.vec[i] <- m.new
+		m.old <- m.new
+		la.old <- la.new
+		phi.old <- phi.new
+	}
+	out <- list(data = data, phi = phi.vec, la = la.vec, m = m.vec,
+	R = R,m.start=m.start,phi.start=phi.start,la.start=la.start,
+	la.true=la,phi.true=phi,m.true=m)
+	out
+}
+
+```
+
+# Output function
+
+```{r}
+gibbs.plot<-function(out)
+{
+	# plots output from gibbs.poiss
+	la <- out$la
+	phi <- out$phi
+	m <- out$m
+	par(mfcol = c(3, 2))
+	# time sequence plots
+	plot(la, ylab = "lambda", xlab = "iteration", main = paste(
+		"true lambda=", round(out$la.true, digits = 2)), type = 
+		"l",sub=paste("start=",
+		round(out$la.start,digits=2)))
+	abline(h = out$la.true, lty = 2)
+	plot(phi, ylab = "phi", xlab = "iteration", main = paste("true phi=",
+		round(out$phi.true, digits = 2)), type = "l",
+		sub=paste("start=",
+		round(out$phi.start,digits=2)))
+	abline(h = out$phi.true, lty = 2)
+	plot(m, ylab = "m", xlab = "iteration", main = paste("true m=", round(
+		out$m.true, digits = 2)), type = "l",sub=paste("start=",
+		round(out$m.start,digits=2)))
+	abline(h = out$m.true, lty = 2)
+	title(paste("true m=", out$data$m.true))
+	# density estimates
+	hw <- 2 * (summary(la)[5] - summary(la)[2])
+	plot(density(la, width = hw), xlab = "lambda", ylab = "probability",
+		type = "l",main="")
+	abline(v = out$data$la.true, lty = 2)
+	title(paste("true lambda=", round(out$la.true, digits = 2)))
+	hw <- 2 * (summary(phi)[5] - summary(phi)[2])
+	plot(density(phi, width = hw), xlab = "phi", ylab = "probability",
+		type = "l",main="")
+	abline(v = out$phi.true, lty = 2)
+	title(paste("true phi=", round(out$data$phi.true, digits = 2)))
+	#hist(m, breaks = sort(unique(m)))
+	barplot(table(m), names = as.character(sort(unique(m))))
+	abline(v = out$m.true, lty = 2)
+	title(paste("true m=", out$data$m.true))
+}
+```
+
+# Running and examing the Gibbs sampler
+
+```{r arsimout, fig.width=9,out.width='70%'}
+out<-gibbs.pois(R=500,data)
+gibbs.plot(out)
+
+```
+
+
+
+C. Czado, March 2020

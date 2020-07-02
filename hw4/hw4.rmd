@@ -1,0 +1,174 @@
+---
+title: "Homework 4"
+output:
+  pdf_document: default
+---
+
+# Problem 1
+
+
+Let's first deal with the likelihood.
+$$
+\begin{array}{l}
+Y=X \alpha +\varepsilon \\
+\varepsilon=Y- X \alpha \\
+\varepsilon_{i}=Y_{i}-X_{i} \alpha
+\end{array}
+$$
+
+It is given that $\varepsilon$ follows multivariate normal distribution with a diagonal covariance matrix, which means that each $\varepsilon_{i}$ is independent of others. Therefore:
+
+$$
+\begin{aligned}
+\ell\left(\sigma^{2}\right) &=f\left(\varepsilon | \sigma^{2}\right)=N\left(\varepsilon | 0, \sigma^{2} I_{n}\right) \\
+&=\prod_{i=1}^{n} N\left(\varepsilon_{i} | 0, \sigma^{2}\right)=\prod_{i=1}^{n} \frac{1}{\sqrt{2 \pi \sigma^{2}}} \exp \left[-\frac{\varepsilon_{i}^{2}}{2 \sigma^{2}}\right] \\
+& \propto \prod_{i=1}^{n} \frac{1}{\sigma} \exp \left[-\frac{\varepsilon_{i}^{2}}{2 \sigma^{2}}\right] \\
+&=\frac{1}{\sigma^{n}} \cdot \exp \left[-\frac{\sum_{i=1}^{n} \varepsilon_{i}^{2}}{2 \sigma^{2}}\right]
+\end{aligned}
+$$
+
+Likelihood of $\phi$ is equal to the likelihood of $\sigma^2$:
+
+$$
+\ell(\phi)=\ell\left(\sigma^{2}\right)=\phi^{\frac{n}{2}} \operatorname{exp}\left[-\phi \frac{\sum_{i=1}^{n} \varepsilon_{i}^{2}}{2}\right]
+$$
+
+## 1a
+$$
+\begin{aligned}
+\pi_{1}\left(\sigma^{2}\right) & \sim \ell\left(\sigma^2\right) \cdot p(\sigma^2) \\
+&=\ell\left(\delta^{2}\right) \cdot 1 \\
+&=l\left(\sigma^{2}\right) \\
+& = \frac{1}{\sigma^{n}} \cdot \exp \left[-\frac{\sum_{i=1}^{n} \varepsilon_{i}^{2}}{2 \sigma^{2}}\right] \\
+& \sim \operatorname{IG}\left(\frac{n-1}{2}, \frac{1}{2} \sum_{i=1}^{n} \varepsilon_{i}^{2}\right)
+\end{aligned}
+$$
+
+## 1b
+
+$$
+\begin{aligned}
+\pi_{2}(\phi) & \propto \ell(\phi) \cdot p(\phi) \\
+&=\ell(\phi) \cdot 1 \\
+&=\ell(\phi) \\
+& \sim \phi^{\frac{n}{2}} \exp \left[-\phi \frac{\sum_{i=1}^{n} \varepsilon_{i}^{2}}{2}\right] \\
+& \sim G\left(\frac{n}{2}+1, \frac{\sum \varepsilon_{i}^{2}}{2}\right)
+\end{aligned}
+$$
+
+# Problem 2
+## 2.a
+According to Equation 3.7 from the script, stationary distribution is defined as follows:
+$$\pi=\pi P$$
+
+Matrix $P$ is known to us.
+Let's write $\pi$ as: $$\pi = [x  y  z]$$
+
+Now let's find $x,y,z$ that satisfy equation 3.7.
+
+- equation 3.7
+- multiply left vector with matrix P and write both sides as colomn vectors
+- factor $x,y$ and $z$ out of the brackets
+
+
+$$[x \quad y \quad z] P=[x \quad y \quad z]$$
+\begin{equation}
+\begin{array}{l}
+
+{\left[\begin{array}{lll}
+0,5 x+0,3 y+0,2 z \\
+0,4 x+0,4 y+0,3 z \\
+0,1 x+0,3 y+0,5 z
+\end{array}\right]} =\left[\begin{array}{l}
+x \\
+y \\
+z
+\end{array}\right] \\
+{\left[\begin{array}{ccc}
+-0,5 & 0,3 & 0,2 \\
+0,4 & -0,6 & 0,3 \\
+0,4 & 0,3 & -0,5
+\end{array}\right]\left[\begin{array}{l}
+x \\
+y \\
+z
+\end{array}\right]=\left[\begin{array}{c}
+0 \\
+0 \\
+0
+\end{array}\right]}
+\end{array}
+\end{equation}
+
+The probabilities have to sum up to 1, so we also have that $x+y+z=1$.
+Together we get this system of linear equations.
+
+\begin{equation}
+\left[\begin{array}{ccc}
+-0,5 & 0,3 & 0,2 \\
+0,4 & -0,6 & 0,3 \\
+0,4 & 0,3 & -0,5 \\
+1 & 1 & 1
+\end{array}\right]\left[\begin{array}{l}
+x \\
+y \\
+z
+\end{array}\right]=\left[\begin{array}{l}
+0 \\
+0 \\
+0 \\
+1
+\end{array}\right]
+\end{equation}
+
+Solving this gets us the following result:
+$$ x = 21/62, y = 32/62, z = 18/62 $$
+$$ \pi = \frac{1}{62}[21 \quad 32 \quad 18] $$
+
+## 2.b
+
+Define transition kernels $p(1,\cdot)$,$p(2,\cdot)$,$p(3,\cdot)$
+
+```{r}
+p1 <- c(0.5, 0.4, 0.1)
+p2 <- c(0.3, 0.4, 0.3)
+p3 <- c(0.2, 0.3, 0.5)
+```
+
+```{r}
+set.seed(42)
+n <- 10^5
+```
+
+Sample the $\theta^{(0)}$ state uniformly from {1,2,3}.
+```{r}
+t <- numeric(n+1)
+t[1] <- sample(c(1,2,3), size=1, prob = c(1,1,1))
+```
+
+```{r}
+for (i in 2:(n+1)){
+    if (t[i-1]==1){ p <- p1 }
+    else if (t[i-1]==2){ p <- p2 }
+    else { p <- p3 }
+    t[i] <- sample(c(1,2,3), size=1, prob = p)
+}
+```
+
+```{r}
+rel_freq <- table(t) / n
+rel_freq
+```
+
+Compare this to the analytical results:
+
+```{r}
+c(21/62, 23/62, 18/62)
+```
+
+```{r}
+binded <- rbind(rel_freq, c(21/62, 23/62, 18/62))
+barplot(binded, beside=T, main="
+    Black - simulation
+    Grey - analytical results")
+```
