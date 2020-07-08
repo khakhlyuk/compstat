@@ -4,7 +4,6 @@ output:
   pdf_document: default
 ---
 
-
 # Problem 1
 ## 1.a Gibbs sampler
 
@@ -94,10 +93,6 @@ for (i in 1:p){
 }
 ```
 
-
-![png](output_6_0.png)
-
-
 ### Intrepret traceplots
 As we can see, the chains converge quite fast. From the graph it can be seen that the chains converge in 10-20 iterations. Let's choose a burn-in period of 100 to be safe.
 
@@ -116,10 +111,6 @@ acf(alpha_nb[,1])
 acf(alpha_nb[,2])
 acf(alpha_nb[,3])
 ```
-
-
-![png](output_9_0.png)
-
 
 ### Intrepret ACF plots
 We can see, that autocorrelation is low for each of the chains. So we can proceed without throwing away every n'th sample.
@@ -145,49 +136,11 @@ for (i in 1:p){
 ```
 
 
-![png](output_11_0.png)
-
-
-
 ```{r}
 ord_lr <- lm(Y ~ X - 1)  # -1 to get read of intercept
 ord_lr
 summary(ord_lr)
 ```
-
-
-    
-    Call:
-    lm(formula = Y ~ X - 1)
-    
-    Coefficients:
-         X1       X2       X3  
-    -1.9238  -0.0587   4.1003  
-
-
-
-
-    
-    Call:
-    lm(formula = Y ~ X - 1)
-    
-    Residuals:
-        Min      1Q  Median      3Q     Max 
-    -5.3286 -1.5298 -0.1412  1.1600  5.2405 
-    
-    Coefficients:
-       Estimate Std. Error t value Pr(>|t|)    
-    X1  -1.9238     0.1510 -12.740   <2e-16 ***
-    X2  -0.0587     0.1363  -0.431    0.667    
-    X3   4.1003     0.1465  27.980   <2e-16 ***
-    ---
-    Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-    
-    Residual standard error: 1.956 on 197 degrees of freedom
-    Multiple R-squared:  0.8355,	Adjusted R-squared:  0.833 
-    F-statistic: 333.4 on 3 and 197 DF,  p-value: < 2.2e-16
-
-
 
 ### Intrepret `lm` results
 
@@ -208,7 +161,10 @@ sigma_real <- 2
 X <- 0.1*matrix(rnorm(samplesize*dim), nrow = samplesize, ncol = dim) +
      matrix(rep(rnorm(samplesize), 3), nrow = samplesize, ncol = dim)
 Y <- as.vector(X%*%alpha_real + rnorm(samplesize, 0, sigma_real))
+```
 
+
+```{r}
 alpha_init <- rep(20,3)
 ```
 
@@ -252,42 +208,10 @@ mah_mcmc <- R2jags::jags(
     model.file = mah_model)
 ```
 
-    module glm loaded
-
-
-    Compiling model graph
-       Resolving undeclared variables
-       Allocating nodes
-    Graph information:
-       Observed stochastic nodes: 200
-       Unobserved stochastic nodes: 2
-       Total graph size: 1221
-    
-    Initializing model
-    
-
-
 
 ```{r}
 structure(mah_mcmc)
 ```
-
-
-    Inference for Bugs model at "/var/folders/7n/fcgysll141n_czqxfkwtd68r0000gn/T//RtmpGXLU0i/model1e94125e39d7.txt", fit using jags,
-     1 chains, each with 200 iterations (first 0 discarded)
-     n.sims = 200 iterations saved
-             mu.vect sd.vect    2.5%     25%     50%     75%   97.5%
-    alpha[1]   0.180   0.748  -1.310  -0.301   0.168   0.666   1.481
-    alpha[2]   0.212   0.661  -0.853  -0.277   0.193   0.630   1.609
-    alpha[3]   1.665   0.668   0.266   1.268   1.659   2.122   2.970
-    sigma2    17.903 186.095   3.805   4.387   4.704   5.067   5.772
-    tau        0.212   0.028   0.173   0.197   0.213   0.228   0.263
-    deviance 896.589  74.490 886.429 889.195 890.731 893.061 898.248
-    
-    DIC info (using the rule, pD = var(deviance)/2)
-    pD = 2774.4 and DIC = 3671.0
-    DIC is an estimate of expected predictive error (lower deviance is better).
-
 
 
 ```{r}
@@ -296,33 +220,9 @@ R2jags::traceplot(mah_mcmc,mfrow=c(3,2))
 ```
 
 
-![png](output_20_0.png)
-
-
-
 ```{r}
 mah_mcmc
 ```
-
-
-    Inference for Bugs model at "/var/folders/7n/fcgysll141n_czqxfkwtd68r0000gn/T//RtmpGXLU0i/model1e94125e39d7.txt", fit using jags,
-     1 chains, each with 200 iterations (first 0 discarded)
-     n.sims = 200 iterations saved
-             mu.vect sd.vect    2.5%     25%     50%     75%   97.5%
-    alpha[1]   0.180   0.748  -1.310  -0.301   0.168   0.666   1.481
-    alpha[2]   0.212   0.661  -0.853  -0.277   0.193   0.630   1.609
-    alpha[3]   1.665   0.668   0.266   1.268   1.659   2.122   2.970
-    sigma2    17.903 186.095   3.805   4.387   4.704   5.067   5.772
-    tau        0.212   0.028   0.173   0.197   0.213   0.228   0.263
-    deviance 896.589  74.490 886.429 889.195 890.731 893.061 898.248
-    
-    DIC info (using the rule, pD = var(deviance)/2)
-    pD = 2774.4 and DIC = 3671.0
-    DIC is an estimate of expected predictive error (lower deviance is better).
-
-
-We see that the chains converged.
-As in Gibbs sample in part 1.a, the estimated value of `sigma2` differes from the true sigma2 and the mean is also around 3.5 here.
 
 # Problem 2
 
@@ -376,8 +276,8 @@ With $\pi(\mu_{1} \mid \mu_{2})$ and $\pi(\mu_{2} \mid \mu_{1})$ as defined abov
 
 $$
 \begin{array}{l}
-\mu_{1}^{(j)} & \sim \pi(\mu_{1} \mid \mu_{2}^{(j-1)}) \\
-\mu_{2}^{(j)} & \sim \pi(\mu_{2} \mid \mu_{1}^{(j)})
+\mu_{1}^{(j)} \sim \pi(\mu_{1} \mid \mu_{2}^{(j-1)}) \\
+\mu_{2}^{(j)} \sim \pi(\mu_{2} \mid \mu_{1}^{(j)})
 \end{array}
 $$
 3. Change counter j to $j+1$ and return to step 2 until convergence is reached.
@@ -415,15 +315,10 @@ gibbs_sampler_2 <- function(Y, sigma1, sigma2, rho,
 }
 ```
 
-## NOTE
-The problem didn't specify how to choose true values of mu, so I chose these
-
 
 ```{r}
 set.seed(42)
-####################
-mu_real = c(4,-8)
-####################
+mu_real = c(6,2)
 sigma1 = sqrt(2)
 sigma2 = sqrt(0.5)
 rho = 0.05
@@ -504,17 +399,9 @@ DIC_4.12(mu_chain_1, Y, sigma1, sigma2, rho)
 ```
 
 
-3.45580869329625
-
-
-
 ```{r}
 DIC_4.12(mu_chain_2, Y, sigma1, sigma2, rho)
 ```
-
-
-0.0446579478100124
-
 
 
 ```{r}
@@ -522,21 +409,8 @@ DIC_4.13(mu_chain_1, Y, sigma1, sigma2, rho)
 ```
 
 
-593.918825503817
-
-
-
 ```{r}
 DIC_4.13(mu_chain_2, Y, sigma1, sigma2, rho)
 ```
 
-
-0.178802300775668
-
-
 For both DIC from eq. 4.12 and eq. 4.13, MCMC with more iterations obtained a far lower score, which indicates that longer sampling is beneficial.
-
-
-```{r}
-
-```

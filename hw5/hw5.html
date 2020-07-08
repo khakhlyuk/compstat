@@ -17747,7 +17747,7 @@ Initializing model
 
 
 <div class="output_text output_subarea ">
-<pre>Inference for Bugs model at &#34;/var/folders/7n/fcgysll141n_czqxfkwtd68r0000gn/T//Rtmp2npESX/model434b2ee751a9.txt&#34;, fit using jags,
+<pre>Inference for Bugs model at &#34;/var/folders/7n/fcgysll141n_czqxfkwtd68r0000gn/T//RtmpaptIk8/model14cd1d30289a.txt&#34;, fit using jags,
  1 chains, each with 200 iterations (first 0 discarded)
  n.sims = 200 iterations saved
          mu.vect sd.vect    2.5%     25%     50%     75%   97.5%
@@ -20893,7 +20893,7 @@ wARMwARMwARMwARMwARMwARMwARMwARMwARMoOMJ/H/eVv8Ft7g0VwAAAABJRU5ErkJggg=="
 
 
 <div class="output_text output_subarea ">
-<pre>Inference for Bugs model at &#34;/var/folders/7n/fcgysll141n_czqxfkwtd68r0000gn/T//Rtmp2npESX/model434b2ee751a9.txt&#34;, fit using jags,
+<pre>Inference for Bugs model at &#34;/var/folders/7n/fcgysll141n_czqxfkwtd68r0000gn/T//RtmpaptIk8/model14cd1d30289a.txt&#34;, fit using jags,
  1 chains, each with 200 iterations (first 0 discarded)
  n.sims = 200 iterations saved
          mu.vect sd.vect    2.5%     25%     50%     75%   97.5%
@@ -21002,8 +21002,8 @@ $$
 </ol>
 $$
 \begin{array}{l}
-\mu_{1}^{(j)} &amp; \sim \pi(\mu_{1} \mid \mu_{2}^{(j-1)}) \\
-\mu_{2}^{(j)} &amp; \sim \pi(\mu_{2} \mid \mu_{1}^{(j)})
+\mu_{1}^{(j)} \sim \pi(\mu_{1} \mid \mu_{2}^{(j-1)}) \\
+\mu_{2}^{(j)} \sim \pi(\mu_{2} \mid \mu_{1}^{(j)})
 \end{array}
 $$<ol>
 <li>Change counter j to $j+1$ and return to step 2 until convergence is reached.</li>
@@ -21057,23 +21057,13 @@ $$<ol>
 </div>
 
 </div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="NOTE">NOTE<a class="anchor-link" href="#NOTE">&#182;</a></h2><p>The problem didn't specify how to choose true values of mu, so I chose these</p>
-
-</div>
-</div>
-</div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-r"><pre><span></span><span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
-<span class="c1">####################</span>
-<span class="n">mu_real</span> <span class="o">=</span> <span class="nf">c</span><span class="p">(</span><span class="m">4</span><span class="p">,</span><span class="m">-8</span><span class="p">)</span>
-<span class="c1">####################</span>
+<span class="n">mu_real</span> <span class="o">=</span> <span class="nf">c</span><span class="p">(</span><span class="m">6</span><span class="p">,</span><span class="m">2</span><span class="p">)</span>
 <span class="n">sigma1</span> <span class="o">=</span> <span class="nf">sqrt</span><span class="p">(</span><span class="m">2</span><span class="p">)</span>
 <span class="n">sigma2</span> <span class="o">=</span> <span class="nf">sqrt</span><span class="p">(</span><span class="m">0.5</span><span class="p">)</span>
 <span class="n">rho</span> <span class="o">=</span> <span class="m">0.05</span>
@@ -21200,7 +21190,7 @@ $$<ol>
 
 
 <div class="output_html rendered_html output_subarea ">
-3.45580869329625
+0.369238438398346
 </div>
 
 </div>
@@ -21232,7 +21222,7 @@ $$<ol>
 
 
 <div class="output_html rendered_html output_subarea ">
-0.0446579478100124
+0.0428032384187272
 </div>
 
 </div>
@@ -21264,7 +21254,7 @@ $$<ol>
 
 
 <div class="output_html rendered_html output_subarea ">
-593.918825503817
+5.63009805288372
 </div>
 
 </div>
@@ -21296,7 +21286,7 @@ $$<ol>
 
 
 <div class="output_html rendered_html output_subarea ">
-0.178802300775668
+0.00166563932357301
 </div>
 
 </div>
